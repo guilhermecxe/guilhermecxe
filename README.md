@@ -8,6 +8,12 @@
   - Data Analysis
   - Web Scraping
   - Natural Language Processing
+- ⚽ And outside computation I like (and always try to use on my personal projects):
+  - Soccer (!)
+  - Movies
+  - TV Shows
+  - Books
+  - Natural languages (my Portuguese, English, Spanish, Chinese and etc.) (not necessarily good at yet)
 
 <div align="center">
   <a href="https://github.com/guilhermecxe">
