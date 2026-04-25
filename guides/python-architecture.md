@@ -1,4 +1,4 @@
-# Arquitetura do Projeto
+# Guia de arquitetura de projeto Python
 
 Baseada no padrão **Ports & Adapters (Hexagonal Architecture)**, organizada para separar claramente regras de negócio, integrações externas e contratos de interface.
 
