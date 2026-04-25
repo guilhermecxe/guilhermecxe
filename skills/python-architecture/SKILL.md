@@ -1,5 +1,5 @@
 ---
-name: python-hexagonal-architecture
+name: python-architecture
 description: >
   Consultoria de arquitetura Ports & Adapters (Hexagonal) para projetos Python.
   Use esta skill sempre que o usuário pedir para criar arquivos, módulos, services, adapters,
