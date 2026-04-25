@@ -1,7 +1,7 @@
 ---
 name: python-architecture
 description: >
-  Consultoria de arquitetura Ports & Adapters (Hexagonal) para projetos Python.
+  Consultoria de arquitetura para projetos Python.
   Use esta skill sempre que o usuário pedir para criar arquivos, módulos, services, adapters,
   agents, ports, rotas, workers ou qualquer estrutura de código dentro de um projeto
   que segue essa arquitetura. Também use para revisar ou dar manutenção em código existente
@@ -12,7 +12,7 @@ description: >
   em projetos com pastas src/services, src/ports, src/adapters, src/agents ou src/di.py.
 ---
 
-# Python Hexagonal Architecture — Skill de Consultoria
+# Python Architecture — Skill de Consultoria
 
 Você é um consultor especialista nesta arquitetura. Seu papel é dois:
 1. **Criar** estrutura de pastas, arquivos e código seguindo os contratos entre camadas.
@@ -24,23 +24,27 @@ Você é um consultor especialista nesta arquitetura. Seu papel é dois:
 ## Mapa das Camadas
 
 ```
-src/
-├── main.py          ← entrypoint, monta o framework, registra routes/ipc
-├── settings.py      ← config via env vars; ninguém lê os.environ diretamente
-├── di.py            ← único lugar que instancia adapters e conecta tudo
-├── exceptions.py    ← erros de domínio (sem deps externas)
+api/
+├── src/
+│   ├── main.py        ← entrypoint, monta o framework, registra routes/ipc
+│   ├── settings.py    ← config de menor sigilo do que os.environ
+│   ├── di.py          ← único lugar que instancia adapters e conecta tudo
+|   ├── exceptions.py  ← erros de domínio (sem deps externas)
+│   │
+│   ├── routes/        ← handlers HTTP; chamam services, retornam schemas
+│   ├── schemas/       ← Pydantic para validar entrada/saída da API
+│   ├── models/        ← dataclasses puras; a "língua comum" da app
+│   ├── services/      ← regras de negócio; orquestram adapters via ports
+│   ├── agents/        ← orquestração LLM; tools/ e prompts/ como sub-pastas
+│   │   ├── tools/     ← toolkits: projeção de um service para tool calling
+│   │   └── prompts/   ← templates de prompt por agente como variáveis constantes
+│   ├── ports/         ← Protocols (interfaces); o que adapters devem cumprir
+│   └── adapters/      ← implementações concretas de ports (tecnologia)
 │
-├── models/          ← dataclasses puras; a "língua comum" da app
-├── ports/           ← Protocols (interfaces); o que adapters devem cumprir
-├── adapters/        ← implementações concretas de ports (tecnologia)
-├── services/        ← regras de negócio; orquestram adapters via ports
-├── schemas/         ← Pydantic para validar entrada/saída da API
-├── routes/          ← handlers HTTP; chamam services, retornam schemas
-├── agents/          ← orquestração LLM; tools/ e prompts/ como sub-pastas
-│   ├── tools/       ← toolkits: projeção de um service para tool calling
-│   └── prompts/     ← templates de prompt por agente
-├── workers/         ← consumers de fila; entrypoints análogos ao main.py
-└── tests/           ← espelha src/; mocka ports para testar services/agents
+└── tests/
+    ├── services/
+    ├── adapters/
+    └── agents/
 ```
 
 ---
@@ -89,19 +93,17 @@ src/
 **Pergunta 6: É validação de entrada/saída da API?**
 → `schemas/` — Pydantic. Exclusivo para routes/ipc.
 
-**Pergunta 7: É um agente LLM que decide quais ferramentas chamar?**
-→ `agents/` — recebe toolkits e AgentRunService. Abre e fecha o AgentRun.
-
-**Pergunta 8: É uma ferramenta que o agente pode invocar?**
+**Pergunta 7: É uma ferramenta que o agente pode invocar?**
 → `agents/tools/` como **toolkit** — classe que adapta um service para tool calling.
   - Relação 1-para-1: cada toolkit tem um service equivalente.
-  - Expõe `get_tools() → list[StructuredTool]` e `set_run_id(run_id)`.
+  - Expõe `get_tools() → list[StructuredTool]`.
 
-**Pergunta 9: É um consumer de fila/worker assíncrono?**
+**Pergunta 8: É um consumer de fila/worker assíncrono?**
 → `workers/` — entrypoint puro. Escuta fila, delega para agent. Sem lógica de negócio.
 
-**Pergunta 10: É config da aplicação?**
-→ `settings.py` — BaseSettings com env vars. Ninguém mais lê `os.environ`.
+**Pergunta 9: É config da aplicação?**
+→ `settings.py` — BaseSettings.
+→ `.env`.
 
 ---
 
@@ -122,23 +124,6 @@ Ao modificar código existente, verifique:
 
 5. **Novo adapter para port existente?** Só adicione o arquivo em `adapters/` e atualize `di.py`
    (geralmente um `if settings.backend == "novo"`). Nenhuma outra camada muda.
-
-6. **Adicionando agente?** Também adicione:
-   - `models/agent_run.py` (se não existir)
-   - `ports/agent_run_store.py`
-   - `services/agent_run.py` (AgentRunService)
-   - Adapter de persistência para o store em `adapters/`
-
----
-
-## AgentRunService — Must-Have com Agentes
-
-Toda execução de agente deve abrir e fechar um `AgentRun`. Sem isso, a execução é
-uma caixa-preta: impossível auditar, fazer retry ou observar o que falhou.
-
-**O agente** abre e fecha o run (`run_service.start()` / `complete()` / `fail()`).  
-**O toolkit** registra cada passo (`run_service.record_step()`).  
-**O toolkit recebe `run_id`** via `set_run_id()` antes da execução começar.
 
 ---
 
